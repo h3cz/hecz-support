@@ -1,0 +1,28 @@
+Hecz Support
+============
+
+Hecz Support is a remote support client made by Hecz (https://hecz.dev).
+It is a modified build of RustDesk 1.5.0 (https://github.com/rustdesk/rustdesk).
+
+RustDesk is Copyright (C) Purslane Tech Pte. Ltd. and contributors.
+RustDesk and this modified version are licensed under the GNU Affero General
+Public License, version 3 (AGPL-3.0). The full license text ships next to this
+file as LICENSE-AGPL-3.0.txt.
+
+Hecz Support is not made, endorsed, or supported by Purslane Tech or the
+RustDesk project. Please send questions about this build to info@hecz.dev,
+not to RustDesk.
+
+What changed from upstream RustDesk 1.5.0
+  * Name, icons, logo, and accent colors (Hecz branding).
+  * Incoming sessions default to "accept by click": the person at the computer
+    must approve every session. No password, account, or unattended access is
+    preset. The computer's owner can change this in Settings.
+  * About page links to hecz.dev and to the source code below.
+
+Corresponding source
+  https://github.com/h3cz/hecz-support
+  The release page for each build also carries the complete patched source
+  tree as an archive.
+
+Third party components bundled by RustDesk keep their own licenses.
