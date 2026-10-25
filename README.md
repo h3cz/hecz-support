@@ -8,7 +8,7 @@ Download: https://hecz.dev/download
 ## How a session works
 
 1. You run `HeczSupport-1.5.0-x64.exe`. It runs without installing.
-2. You read your 9 digit **ID** to Hecz over the phone or chat. No password is needed.
+2. You read your **ID** (a short number) to Hecz over the phone or chat. No password is needed.
 3. When Hecz connects, a window asks you to **Accept** or **Dismiss**.
    Nothing happens until you click Accept, and you can end the session at any
    time from that same window.
