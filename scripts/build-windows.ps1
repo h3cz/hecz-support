@@ -25,6 +25,12 @@ $env:VCPKG_ROOT = "$Root\vcpkg"
 $env:VCPKG_DEFAULT_HOST_TRIPLET = "x64-windows-static"
 $env:FLUTTER_SUPPRESS_ANALYTICS = "true"
 $env:RUSTUP_TOOLCHAIN = "1.75-x86_64-pc-windows-msvc"
+# Pin MSBuild to the newest complete MSVC toolset. A partial toolset (headers
+# and cl.exe but no CRT libs) left as the v143 default breaks CMake's compiler
+# check with LNK1104 MSVCRTD.lib. MSBuild reads VCToolsVersion from the env.
+$vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+$toolset = Get-ChildItem "$vs\VC\Tools\MSVC" -Directory | Where-Object { Test-Path "$($_.FullName)\lib\x64\msvcrt.lib" } | Sort-Object { [version]$_.Name } | Select-Object -Last 1
+if ($toolset) { $env:VCToolsVersion = $toolset.Name; Log "MSVC toolset $($toolset.Name)" }
 
 if ($Stage -in "brand", "all") {
   Run "apply branding" { python "$Repo\scripts\apply_branding.py" $Src $Repo }
