@@ -30,7 +30,17 @@ big.resize((512, 512), Image.LANCZOS).save(f"{out}/icon.png")
 for s, n in [(32, "32x32.png"), (64, "64x64.png"), (128, "128x128.png"), (256, "128x128@2x.png")]:
     big.resize((s, s), Image.LANCZOS).save(f"{out}/{n}")
 big.save(f"{out}/app_icon.ico", sizes=[(16,16),(20,20),(24,24),(32,32),(40,40),(48,48),(64,64),(128,128),(256,256)])
-big.save(f"{out}/tray-icon.ico", sizes=[(16,16),(20,20),(24,24),(32,32),(48,48)])
+# Tray: a brighter mauve tile with a larger "h" and no dot. The dark app
+# icon disappears on Windows 11's default dark taskbar, and the dot is lost at 16px.
+def tray_mark():
+    im = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([0, 0, S - 1, S - 1], int(S * 0.22), fill=(0x6B, 0x5D, 0x82, 255))
+    f = ImageFont.truetype("/usr/share/fonts/ttf-dejavu/DejaVuSerif-BoldItalic.ttf", int(S * 0.98))
+    d.text((int(S * 0.13), int(S * 0.90)), "h", font=f, fill=(0xFA, 0xF8, 0xF5, 255), anchor="ls")
+    return im
+
+tray_mark().save(f"{out}/tray-icon.ico", sizes=[(16,16),(20,20),(24,24),(32,32),(40,40),(48,48)])
 big.resize((48, 48), Image.LANCZOS).save(f"{out}/preview-48.png")
 big.resize((16, 16), Image.LANCZOS).resize((64, 64), Image.NEAREST).save(f"{out}/preview-16-zoom.png")
 

@@ -7,7 +7,7 @@ Download: https://hecz.dev/download
 
 ## How a session works
 
-1. You run `HeczSupport-1.5.0-x64.exe`. It runs without installing.
+1. You run `HeczSupport-1.5.0-r2-x64.exe`. It runs without installing.
 2. You read your **ID** (a short number) to Hecz over the phone or chat. No password is needed.
 3. When Hecz connects, a window asks you to **Accept** or **Dismiss**.
    Nothing happens until you click Accept, and you can end the session at any
@@ -23,7 +23,7 @@ ID and relay servers, end to end encrypted.
 |---|---|
 | `scripts/apply_branding.py` | Exact, fail-closed edits that turn upstream RustDesk 1.5.0 into Hecz Support |
 | `scripts/build-windows.ps1` | Windows build, mirroring upstream's `flutter-build.yml` x64 job |
-| `scripts/setup-toolchain.ps1` | Pinned toolchain: Flutter 3.24.5 with RustDesk's engine, LLVM 15.0.6, Rust 1.75, vcpkg `9e593bb` |
+| `scripts/setup-toolchain.ps1` | Pinned toolchain: Flutter 3.24.5 with RustDesk's engine, LLVM 15.0.6, Rust 1.75, vcpkg `9e593bb`. Every download is checked against a recorded SHA-256 |
 | `scripts/make_icons.py` | Renders the icon set from the hecz.dev mark |
 | `branding/` | Icons and logo |
 | `NOTICE.txt` | Attribution and change summary, shipped inside the client |
@@ -42,7 +42,7 @@ C:\hsb\vcpkg\vcpkg.exe install --triplet x64-windows-static --x-install-root=C:\
 powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 -Repo <this repo> -Stage all
 ```
 
-The result is `C:\hsb\dist\HeczSupport-1.5.0-x64.exe` plus its SHA-256.
+The result is `C:\hsb\dist\HeczSupport-<Version>-x64.exe` (pass `-Version 1.5.0-r2`) plus its SHA-256.
 
 ## Not done yet
 

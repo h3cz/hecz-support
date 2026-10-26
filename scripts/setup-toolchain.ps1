@@ -4,7 +4,21 @@ $ProgressPreference = "SilentlyContinue"
 $R = "C:\hsb"
 New-Item -ItemType Directory -Force -Path $R, "$R\dl" | Out-Null
 function Log($m) { "$(Get-Date -Format s) $m" | Tee-Object -FilePath "$R\setup.log" -Append }
-function Fetch($url, $out) { if (-not (Test-Path $out)) { Log "download $url"; Invoke-WebRequest -Uri $url -OutFile "$out.part"; Move-Item "$out.part" $out } }
+# SHA-256 of every downloaded input, recorded from the 2026-10-25 build. The
+# RustDesk engine is published under a mutable "main" tag, so a mismatch means
+# upstream replaced it: stop and review rather than build with different bytes.
+$Pinned = @{
+  "7z.msi"      = "ec6af1ea0367d16dde6639a89a080a524cebc4d4bedfe00ed0cac4b865a918d8"
+  "llvm.exe"    = "22e2f2c38be4c44db7a1e9da5e67de2a453c5b4be9cf91e139592a63877ac0a2"
+  "flutter.zip" = "b8a7485acd3c6fb23a76b7ac09f89e8d93d62fbff7147c6f5f8c5686d949eeac"
+  "engine.zip"  = "ec8cabf36ee4ff24c8d98de25b00e70781eb03876265aee84d0fe554a110036e"
+}
+function Fetch($url, $out) {
+  if (-not (Test-Path $out)) { Log "download $url"; Invoke-WebRequest -Uri $url -OutFile "$out.part"; Move-Item "$out.part" $out }
+  $want = $Pinned[(Split-Path $out -Leaf)]
+  $got = (Get-FileHash -Algorithm SHA256 $out).Hash.ToLower()
+  if ($want -and $got -ne $want) { Log "HASH MISMATCH $out got $got want $want"; exit 1 }
+}
 
 # 7-Zip (admin-free MSI extraction) for unpacking the LLVM NSIS installer
 if (-not (Test-Path "$R\7zip\Files\7-Zip\7z.exe")) {

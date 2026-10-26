@@ -145,6 +145,33 @@ for toml in ("Cargo.toml", "libs/portable/Cargo.toml"):
     edit(toml, 'FileDescription = "RustDesk Remote Desktop"', f'FileDescription = "{DISPLAY_NAME}"')
     edit(toml, 'OriginalFilename = "rustdesk.exe"', f'OriginalFilename = "{APP_NAME}.exe"')
 
+# 5b. The desktop title bar draws a literal "RustDesk" beside the icon instead
+#     of the app name.
+edit(
+    "flutter/lib/desktop/widgets/tabbar_widget.dart",
+    """                            child: const Text(
+                              "RustDesk",""",
+    f"""                            child: const Text(
+                              "{DISPLAY_NAME}",""",
+)
+# Translated strings swap "RustDesk" for the internal APP_NAME. Show the
+# spaced display name instead; APP_NAME itself stays space-free.
+edit("src/lang.rs", '                    s = s.replace("RustDesk", &app_name);\n                } else {',
+     f'                    s = s.replace("RustDesk", "{DISPLAY_NAME}");\n                }} else {{')
+# The status bar links to RustDesk's paid server plans ("set up your own server").
+# That is an upsell for operators, not for the person being helped: hide it.
+edit(
+    "flutter/lib/desktop/pages/connection_page.dart",
+    "            offstage: !(!_svcStopped.value &&",
+    "            offstage: true || !(!_svcStopped.value &&",
+)
+edit("flutter/lib/desktop/pages/connection_page.dart", 'const url = "https://rustdesk.com/pricing";', f'const url = "{SITE}";')
+# "Switch Sides" button uses saturated purple, which the Hecz palette reserves for the logo.
+edit("flutter/lib/desktop/pages/server_page.dart", "              color: Colors.purple,\n              onClick: () => handleSwitchBack(context),",
+     "              color: MyTheme.accent,\n              onClick: () => handleSwitchBack(context),")
+# The self-extracting wrapper has no CompanyName at all upstream.
+edit("libs/portable/Cargo.toml", f'ProductName = "{DISPLAY_NAME}"', f'ProductName = "{DISPLAY_NAME}"\nCompanyName = "Hecz"')
+
 # 6. Icons and logo.
 copy("app_icon.ico", "res/icon.ico", "flutter/windows/runner/resources/app_icon.ico")
 copy("tray-icon.ico", "res/tray-icon.ico")
