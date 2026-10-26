@@ -33,7 +33,7 @@ $toolset = Get-ChildItem "$vs\VC\Tools\MSVC" -Directory | Where-Object { Test-Pa
 if ($toolset) { $env:VCToolsVersion = $toolset.Name; Log "MSVC toolset $($toolset.Name)" }
 
 if ($Stage -in "brand", "all") {
-  Run "apply branding" { python "$Repo\scripts\apply_branding.py" $Src $Repo }
+  Run "apply branding" { python "$Repo\scripts\apply_branding.py" $Src $Repo $Version }
 }
 
 if ($Stage -in "bridge", "all") {

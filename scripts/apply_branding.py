@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Turn a clean RustDesk 1.5.0 checkout into the Hecz Support client.
 
-Usage: python apply_branding.py <rustdesk-src> <hecz-support-repo>
+Usage: python apply_branding.py <rustdesk-src> <hecz-support-repo> [1.5.0-rN]
 
 Every edit is an exact string replacement that must match once. If upstream
 moves a line, the script stops instead of guessing, so a new RustDesk tag
 needs a deliberate review of this file.
 """
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -14,6 +15,9 @@ from pathlib import Path
 SRC = Path(sys.argv[1]).resolve()
 REPO = Path(sys.argv[2]).resolve()
 BRAND = REPO / "branding"
+VERSION = sys.argv[3] if len(sys.argv) > 3 else "1.5.0"
+if not re.fullmatch(r"1\.5\.0(?:-r[1-9][0-9]*)?", VERSION):
+    sys.exit("Expected a 1.5.0 release version, optionally followed by -rN")
 
 APP_NAME = "HeczSupport"  # no spaces: Windows service and sc.exe commands use it unquoted
 DISPLAY_NAME = "Hecz Support"
@@ -171,6 +175,29 @@ edit("flutter/lib/desktop/pages/server_page.dart", "              color: Colors.
      "              color: MyTheme.accent,\n              onClick: () => handleSwitchBack(context),")
 # The self-extracting wrapper has no CompanyName at all upstream.
 edit("libs/portable/Cargo.toml", f'ProductName = "{DISPLAY_NAME}"', f'ProductName = "{DISPLAY_NAME}"\nCompanyName = "Hecz"')
+
+# The home page uses a separate attribution link and hides the title by default.
+# Keep upstream attribution in About and NOTICE, with the support link on Home.
+edit(common,
+     """      onTap: () {
+        launchUrl(Uri.parse('https://rustdesk.com'));
+      },
+      child: Opacity(""",
+     f"""      onTap: () {{
+        launchUrl(Uri.parse('{SITE}'));
+      }},
+      child: Opacity(""")
+edit(common, '            translate("powered_by_me"),',
+     '            "Hecz Support",')
+edit("flutter/lib/desktop/pages/desktop_tab_page.dart",
+     """            body: DesktopTab(
+              controller: tabController,""",
+     """            body: DesktopTab(
+              controller: tabController,
+              showTitle: true,""")
+# Display the package revision without changing the upstream protocol version.
+edit(about, "      final version = await bind.mainGetVersion();",
+     f"      const version = '{VERSION}';")
 
 # 6. Icons and logo.
 copy("app_icon.ico", "res/icon.ico", "flutter/windows/runner/resources/app_icon.ico")

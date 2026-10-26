@@ -7,9 +7,9 @@ Download: https://hecz.dev/download
 
 ## How a session works
 
-1. You run `HeczSupport-1.5.0-r2-x64.exe`. It runs without installing.
+1. You run `HeczSupport-1.5.0-r3-x64.exe`. It runs without installing.
 2. You read your **ID** (a short number) to Hecz over the phone or chat. No password is needed.
-3. When Hecz connects, a window asks you to **Accept** or **Dismiss**.
+3. When Hecz connects, a window asks you to **Accept** or **Cancel**.
    Nothing happens until you click Accept, and you can end the session at any
    time from that same window.
 
@@ -42,13 +42,16 @@ C:\hsb\vcpkg\vcpkg.exe install --triplet x64-windows-static --x-install-root=C:\
 powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 -Repo <this repo> -Stage all
 ```
 
-The result is `C:\hsb\dist\HeczSupport-<Version>-x64.exe` (pass `-Version 1.5.0-r2`) plus its SHA-256.
+The result is `C:\hsb\dist\HeczSupport-<Version>-x64.exe` (pass `-Version 1.5.0-r3`) plus its SHA-256.
 
 ## Not done yet
 
 * **Code signing.** Builds are unsigned until Hecz has a code signing
   certificate, so Windows SmartScreen shows "Windows protected your PC".
-  Check the SHA-256 on the download page, then choose More info, Run anyway.
+  Edge may also say the file is not commonly downloaded. Choose Keep, then
+  Keep anyway (it may be under the arrow beside Delete). Before opening it,
+  check the SHA-256 on the download page. If Windows warns, choose More info,
+  then Run anyway.
 * **Own ID and relay server.** The client uses RustDesk's free public servers.
   Moving to a self-hosted `hbbs`/`hbbr` only needs the host and public key in
   `libs/hbb_common/src/config.rs`, rebuilt.
