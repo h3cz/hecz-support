@@ -19,6 +19,9 @@ What changed from upstream RustDesk 1.5.0
     must approve every session. No password, account, or unattended access is
     preset. The computer's owner can change this in Settings.
   * About page links to hecz.dev and to the source code below.
+  * A redesigned install wizard that reports a declined permission prompt or
+    a failed install instead of closing, a one-time "installed" note on the
+    home screen, and an uninstall confirmation.
 
 Corresponding source
   https://github.com/h3cz/hecz-support

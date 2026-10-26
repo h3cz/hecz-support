@@ -7,6 +7,7 @@ Every edit is an exact string replacement that must match once. If upstream
 moves a line, the script stops instead of guessing, so a new RustDesk tag
 needs a deliberate review of this file.
 """
+import hashlib
 import re
 import shutil
 import sys
@@ -199,16 +200,218 @@ edit("flutter/lib/desktop/pages/desktop_tab_page.dart",
 edit(about, "      final version = await bind.mainGetVersion();",
      f"      const version = '{VERSION}';")
 
-# The installer must show the actual license, not upstream's privacy policy.
-edit("flutter/lib/desktop/pages/install_page.dart",
-     """onTap: () => launchUrlString(
-                                'https://rustdesk.com/privacy.html'),
-                            child: Tooltip(
-                              message: 'https://rustdesk.com/privacy.html',""",
-     f"""onTap: () => launchUrlString(
-                                '{SOURCE}/blob/main/LICENSE'),
-                            child: Tooltip(
-                              message: '{SOURCE}/blob/main/LICENSE',""")
+# 7. Installer ("Paper" wizard). The upstream page is replaced wholesale, so
+#    it is pinned by hash: a new RustDesk tag must be reviewed by hand.
+UPSTREAM_INSTALL_PAGE = "982b723ef0cd3dcb11ba5c6fed5ce6ae896ed2bee13dc5e36a56e59a90381806"
+
+
+def replace_pinned(rel, sha256, new_file):
+    path = SRC / rel
+    found = hashlib.sha256(path.read_bytes()).hexdigest()
+    if found != sha256:
+        sys.exit(f"{rel}: upstream changed (sha256 {found}); review before replacing")
+    shutil.copyfile(new_file, path)
+    print(f"replaced {rel}")
+
+
+replace_pinned("flutter/lib/desktop/pages/install_page.dart", UPSTREAM_INSTALL_PAGE,
+               REPO / "branding/flutter/install_page.dart")
+shutil.copyfile(REPO / "branding/flutter/hecz_installed_banner.dart",
+                SRC / "flutter/lib/desktop/widgets/hecz_installed_banner.dart")
+print("copied hecz_installed_banner.dart")
+
+# Upstream exits the process right after the elevated install, whether it
+# worked or not, so a cancelled UAC prompt made the window vanish. Record the
+# result instead and let the install page show it.
+edit("src/ui_interface.rs",
+     """#[inline]
+pub fn install_me(_options: String, _path: String, _silent: bool, _debug: bool) {
+    #[cfg(windows)]
+    std::thread::spawn(move || {
+        allow_err!(crate::platform::windows::install_me(
+            &_options, _path, _silent, _debug
+        ));
+        std::process::exit(0);
+    });
+}
+""",
+     """// Hecz Support: install result for the install page (see install_status).
+#[cfg(windows)]
+pub static HECZ_ELEVATED: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+#[cfg(windows)]
+static HECZ_INSTALL: std::sync::Mutex<(&'static str, String)> =
+    std::sync::Mutex::new(("idle", String::new()));
+
+#[inline]
+pub fn install_me(_options: String, _path: String, _silent: bool, _debug: bool) {
+    #[cfg(windows)]
+    {
+        {
+            let mut state = HECZ_INSTALL.lock().unwrap();
+            if state.0 == "running" {
+                return;
+            }
+            *state = ("running", String::new());
+        }
+        HECZ_ELEVATED.store(false, std::sync::atomic::Ordering::SeqCst);
+        std::thread::spawn(move || {
+            let result = match crate::platform::windows::install_me(
+                &_options, _path, _silent, _debug,
+            ) {
+                Ok(()) if crate::platform::is_installed() => ("done", String::new()),
+                Ok(()) => (
+                    "failed",
+                    "The install script finished, but Hecz Support is not in the install folder."
+                        .to_owned(),
+                ),
+                Err(e) => {
+                    log::error!("install failed: {:?}", e);
+                    // ShellExecuteEx reports a declined UAC prompt as ERROR_CANCELLED.
+                    let cancelled = !HECZ_ELEVATED.load(std::sync::atomic::Ordering::SeqCst)
+                        && e.chain().any(|c| {
+                            c.downcast_ref::<::windows::core::Error>()
+                                .map_or(false, |w| w.code().0 as u32 == 0x800704C7)
+                        });
+                    (if cancelled { "cancelled" } else { "failed" }, format!("{e:#}"))
+                }
+            };
+            *HECZ_INSTALL.lock().unwrap() = result;
+        });
+    }
+}
+
+/// JSON for the install page: state is idle|running|done|cancelled|failed.
+/// `elevated` is set once Windows accepted the UAC prompt; `copied` once the
+/// installed exe is this exe (XCOPY keeps the size and modified time).
+pub fn hecz_install_status() -> String {
+    #[cfg(windows)]
+    {
+        let (state, message) = HECZ_INSTALL.lock().unwrap().clone();
+        let elevated = HECZ_ELEVATED.load(std::sync::atomic::Ordering::SeqCst);
+        let copied = state == "done" || (elevated && hecz_install_copied());
+        return serde_json::json!({
+            "state": state,
+            "elevated": elevated || state == "done",
+            "copied": copied,
+            "message": message,
+            "reduce_motion": hecz_reduce_motion(),
+        })
+        .to_string();
+    }
+    #[cfg(not(windows))]
+    "{}".to_owned()
+}
+
+#[cfg(windows)]
+fn hecz_install_copied() -> bool {
+    let (_, _, _, exe) = crate::platform::windows::get_install_info();
+    let Ok(cur) = std::env::current_exe().and_then(std::fs::metadata) else {
+        return false;
+    };
+    let Ok(installed) = std::fs::metadata(&exe) else {
+        return false;
+    };
+    cur.len() == installed.len() && cur.modified().ok() == installed.modified().ok()
+}
+
+/// Windows Settings > Accessibility > Animation effects is off.
+#[cfg(windows)]
+fn hecz_reduce_motion() -> bool {
+    const SPI_GETCLIENTAREAANIMATION: u32 = 0x1042;
+    let mut on: i32 = 1;
+    let ok = unsafe {
+        winapi::um::winuser::SystemParametersInfoW(
+            SPI_GETCLIENTAREAANIMATION,
+            0,
+            &mut on as *mut i32 as *mut winapi::ctypes::c_void,
+            0,
+        )
+    };
+    ok != 0 && on == 0
+}
+
+/// Finish with "Open Hecz Support now": start the installed copy, then leave.
+pub fn hecz_install_open_installed() {
+    #[cfg(windows)]
+    {
+        let (_, _, _, exe) = crate::platform::windows::get_install_info();
+        allow_err!(std::process::Command::new(&exe).spawn());
+    }
+    std::process::exit(0);
+}
+""")
+edit("src/platform/windows/installer_shell.rs",
+     """    unsafe { Shell::ShellExecuteExW(&mut info) }?;
+""",
+     """    unsafe { Shell::ShellExecuteExW(&mut info) }?;
+    // Hecz Support: the UAC prompt was accepted (the install page ticks a step).
+    crate::ui_interface::HECZ_ELEVATED.store(true, std::sync::atomic::Ordering::SeqCst);
+""")
+edit("src/flutter_ffi.rs",
+     """pub fn install_install_me(options: String, path: String) {
+    install_me(options, path, false, false);
+}
+""",
+     """pub fn install_install_me(options: String, path: String) {
+    // silent: the install page offers "Open Hecz Support now" itself.
+    install_me(options, path, true, false);
+}
+
+pub fn install_status() -> SyncReturn<String> {
+    SyncReturn(hecz_install_status())
+}
+
+pub fn install_open_installed() {
+    hecz_install_open_installed();
+}
+""")
+# Add/Remove Programs shows the spaced name and publisher. Display only: the
+# uninstall subkey, service and folder keep the space-free APP_NAME.
+edit("src/platform/windows.rs",
+     'reg add {subkey} /f /v DisplayName /t REG_SZ /d \\"{app_name}\\"',
+     f'reg add {{subkey}} /f /v DisplayName /t REG_SZ /d \\"{DISPLAY_NAME}\\"')
+edit("src/platform/windows.rs",
+     'reg add {subkey} /f /v Publisher /t REG_SZ /d \\"{app_name}\\"',
+     'reg add {subkey} /f /v Publisher /t REG_SZ /d \\"Hecz\\"')
+# Uninstall (Start menu or Settings > Apps) asks first instead of starting at once.
+edit("src/core_main.rs",
+     """            if args[0] == "--uninstall" {
+                if let Err(err) = platform::uninstall_me(true) {""",
+     """            if args[0] == "--uninstall" {
+                let text: Vec<u16> = "Remove Hecz Support from this PC?\\n\\nHecz will no longer be able to help through it. You can install it again from hecz.dev/download."
+                    .encode_utf16()
+                    .chain(Some(0))
+                    .collect();
+                let title: Vec<u16> = "Hecz Support".encode_utf16().chain(Some(0)).collect();
+                let answer = unsafe {
+                    winapi::um::winuser::MessageBoxW(
+                        std::ptr::null_mut(),
+                        text.as_ptr(),
+                        title.as_ptr(),
+                        winapi::um::winuser::MB_YESNO
+                            | winapi::um::winuser::MB_ICONQUESTION
+                            | winapi::um::winuser::MB_DEFBUTTON2,
+                    )
+                };
+                if answer != winapi::um::winuser::IDYES {
+                    return None;
+                }
+                if let Err(err) = platform::uninstall_me(true) {""")
+home = "flutter/lib/desktop/pages/desktop_home_page.dart"
+edit(home, "import 'package:flutter_hbb/desktop/widgets/update_progress.dart';\n",
+     "import 'package:flutter_hbb/desktop/widgets/update_progress.dart';\n"
+     "import 'package:flutter_hbb/desktop/widgets/hecz_installed_banner.dart';\n")
+edit(home,
+     """      color: Theme.of(context).scaffoldBackgroundColor,
+      child: ConnectionPage(),
+""",
+     """      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Column(children: [
+        const HeczInstalledBanner(),
+        Expanded(child: ConnectionPage()),
+      ]),
+""")
 
 # 6. Icons and logo.
 # Windows must use the dedicated high-contrast tray icon, not the app logo.
