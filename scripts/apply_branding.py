@@ -199,6 +199,17 @@ edit("flutter/lib/desktop/pages/desktop_tab_page.dart",
 edit(about, "      final version = await bind.mainGetVersion();",
      f"      const version = '{VERSION}';")
 
+# The installer must show the actual license, not upstream's privacy policy.
+edit("flutter/lib/desktop/pages/install_page.dart",
+     """onTap: () => launchUrlString(
+                                'https://rustdesk.com/privacy.html'),
+                            child: Tooltip(
+                              message: 'https://rustdesk.com/privacy.html',""",
+     f"""onTap: () => launchUrlString(
+                                '{SOURCE}/blob/main/LICENSE'),
+                            child: Tooltip(
+                              message: '{SOURCE}/blob/main/LICENSE',""")
+
 # 6. Icons and logo.
 copy("app_icon.ico", "res/icon.ico", "flutter/windows/runner/resources/app_icon.ico")
 copy("tray-icon.ico", "res/tray-icon.ico")
