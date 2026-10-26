@@ -20,8 +20,9 @@ The home screen offers **Install**. The installer is a three-step wizard
 (Welcome, Install, Ready):
 
 * **Welcome:** install folder, Start menu and desktop shortcuts, and a
-  heads-up that Windows will ask for permission and show *Unknown publisher*
-  (the build is unsigned). *Run once without installing* stays available.
+  heads-up that Windows will ask for permission. The prompt names *Windows
+  Command Processor* (Microsoft), because RustDesk's installer runs its install
+  steps through a verified script. *Run once without installing* stays available.
 * **Installing:** only real steps are shown: the Windows permission prompt,
   copying the files, and starting the background service.
 * **You're ready:** the ID with a Copy button, and an option to open

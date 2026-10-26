@@ -516,11 +516,11 @@ class _InstallPageBodyState extends State<_InstallPageBody>
           TextSpan(text: 'Heads-up: ', style: _bold),
           TextSpan(
               text: 'next, Windows asks “Do you want to allow this app to make '
-                  'changes to your device?” and shows '),
-          TextSpan(text: 'Unknown publisher', style: _bold),
+                  'changes to your device?” for '),
+          TextSpan(text: 'Windows Command Processor', style: _bold),
           TextSpan(
-              text: '. That is expected: this build is not code signed yet. '
-                  'Click '),
+              text: '. That is expected: it runs the Hecz Support install '
+                  'steps. Click '),
           TextSpan(text: 'Yes', style: _bold),
           TextSpan(text: ' to continue.'),
         ]),
@@ -529,7 +529,7 @@ class _InstallPageBodyState extends State<_InstallPageBody>
         const Spacer(),
         Row(children: [
           if (!bind.installShowRunWithoutInstall())
-            Flexible(child: _runOnceLink()),
+            Flexible(flex: 6, child: _runOnceLink()),
           const Spacer(),
           OutlinedButton(
             style: _ghostStyle,
@@ -574,7 +574,7 @@ class _InstallPageBodyState extends State<_InstallPageBody>
         const SizedBox(height: 22),
         _step(
           'Windows permission',
-          'Click Yes on the Windows prompt. It may say “Unknown publisher”.',
+          'Click Yes on the Windows prompt for Windows Command Processor.',
           permission ? _StepState.done : _StepState.now,
         ),
         _step(
@@ -722,8 +722,8 @@ class _InstallPageBodyState extends State<_InstallPageBody>
           const TextSpan(text: 'Try again', style: _bold),
           TextSpan(
               text: cancelled
-                  ? ', then choose Yes when Windows asks. It may say '
-                      '“Unknown publisher”, which is expected for this build.'
+                  ? ', then choose Yes when Windows asks. The prompt names '
+                      'Windows Command Processor, which runs the install steps.'
                   : '. If it happens again, send the details below to Hecz.'),
         ]),
         if (!cancelled)
@@ -761,12 +761,19 @@ class _InstallPageBodyState extends State<_InstallPageBody>
         const Spacer(),
         Row(children: [
           if (!bind.installShowRunWithoutInstall())
-            Flexible(child: _runOnceLink()),
+            Flexible(flex: 6, child: _runOnceLink()),
           const Spacer(),
+          // After a real failure the location may be the cause, so offer a
+          // way back to change it; after a declined prompt, Cancel is enough.
           OutlinedButton(
             style: _ghostStyle,
-            onPressed: () => windowManager.close(),
-            child: const Text('Cancel'),
+            onPressed: cancelled
+                ? () => windowManager.close()
+                : () => setState(() {
+                      stage = _Stage.welcome;
+                      copied = false;
+                    }),
+            child: Text(cancelled ? 'Cancel' : 'Back'),
           ),
           const SizedBox(width: 10),
           ElevatedButton(
@@ -802,6 +809,11 @@ class _InstallPageBodyState extends State<_InstallPageBody>
               onChanged: (v) => onChanged(v ?? false),
               activeColor: _mauve,
               side: const BorderSide(color: Color(0xFF9B92A8), width: 1.5),
+              // A clearly visible focus halo for keyboard users.
+              overlayColor: WidgetStateProperty.resolveWith((states) =>
+                  states.contains(WidgetState.focused)
+                      ? const Color(0x556B5D82)
+                      : null),
               visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
             ),
             const SizedBox(width: 8),
