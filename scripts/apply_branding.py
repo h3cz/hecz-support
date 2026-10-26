@@ -211,6 +211,12 @@ edit("flutter/lib/desktop/pages/install_page.dart",
                               message: '{SOURCE}/blob/main/LICENSE',""")
 
 # 6. Icons and logo.
+# Windows must use the dedicated high-contrast tray icon, not the app logo.
+edit("src/tray.rs", "fn load_icon_from_asset() -> Option<image::DynamicImage> {",
+     """fn load_icon_from_asset() -> Option<image::DynamicImage> {
+    if cfg!(windows) {
+        return None;
+    }""")
 copy("app_icon.ico", "res/icon.ico", "flutter/windows/runner/resources/app_icon.ico")
 copy("tray-icon.ico", "res/tray-icon.ico")
 copy("icon.png", "res/icon.png", "flutter/assets/icon.png")
