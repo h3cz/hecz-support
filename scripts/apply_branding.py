@@ -207,7 +207,8 @@ UPSTREAM_INSTALL_PAGE = "982b723ef0cd3dcb11ba5c6fed5ce6ae896ed2bee13dc5e36a56e59
 
 def replace_pinned(rel, sha256, new_file):
     path = SRC / rel
-    found = hashlib.sha256(path.read_bytes()).hexdigest()
+    # Hash with LF endings: a Windows checkout may have CRLF (core.autocrlf).
+    found = hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
     if found != sha256:
         sys.exit(f"{rel}: upstream changed (sha256 {found}); review before replacing")
     shutil.copyfile(new_file, path)
